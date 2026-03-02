@@ -6,7 +6,7 @@ Kernels:
 Particionamento: 
 - padrão para melhor desempenho
 Rede: 
-- usar Network Manager
+- usar Network Manager (IWD preferencialmente)
 Repositórios adicionariamos:
 - multlib
 
@@ -47,8 +47,14 @@ Instale o dolphin, flatpack e o firefox
 
 Instale o micro code do processador (Wiki Arch Linux)
 
-Instale o wofi
-`sudo pacman -S wofi` 
+Instale o rofi
+`sudo pacman -S rofi` 
+
+Instale o Wiremix
+`sudo pacman -S wiremix` 
+
+Instale o impala
+`sudo pacman -S impala` 
 
 Instale a Waybar
 `sudo pacman -S waybar`
@@ -111,3 +117,7 @@ sudo pacman -S btop
 sudo pacman -S print-manager
 
 ```
+---
+## Aliases 
+ubuntu: 
+`alias blog="sudo docker run -it ubuntu bash"` 
