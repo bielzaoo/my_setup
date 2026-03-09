@@ -87,6 +87,7 @@ Instale yay:
 ```plaintext
 sudo pacman -S --needed git base-devel
 git clone https://aur.archlinux.org/yay.git
+makepkg -si
 yay -Y --gendb
 
 ```
