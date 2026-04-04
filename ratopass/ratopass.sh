@@ -175,16 +175,38 @@ check_deps() {
   fi
 }
 
+
+# ─── Suprimir warnings de depreciação do Node.js (afeta bw CLI no Arch) ──────
+# O Node imprime warnings no stderr que em algumas versões vazam pro stdout
+# e poluem a saída do `bw status` e `bw unlock --raw`.
+export NODE_NO_WARNINGS=1
+export NODE_OPTIONS="--no-deprecation"
+
+# ─── Wrapper seguro para `bw status` ─────────────────────────────────────────
+# Filtra qualquer linha que não seja JSON antes de passar pro jq.
+_bw_status() {
+  bw status "$@" 2>/dev/null | grep -m1 '^{' || echo '{}'
+}
+
+# ─── Wrapper seguro para `bw unlock/login --raw` ─────────────────────────────
+# Extrai apenas a linha que corresponde a um JWT.
+_bw_raw() {
+  # Aceita JWT (com pontos) ou base64 puro (com +/=) — ambos usados pelo bw CLI
+  bw "$@" 2>/dev/null | grep -m1 -E '^[A-Za-z0-9+/=_.-]{20,}$' || true
+}
 # ─── [SEC-08] Validar token de sessão antes de usar ──────────────────────────
 # Token válido do Bitwarden é um JWT: três partes base64 separadas por ponto.
 _validate_session_token() {
   local token="$1"
-  # JWT tem exatamente 3 segmentos separados por ponto
-  if ! [[ "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]]; then
-    return 1
-  fi
-  # não deve ser trivialmente curto
-  [[ ${#token} -gt 20 ]]
+  # Rejeita vazio ou muito curto
+  [[ ${#token} -lt 20 ]] && return 1
+  # Rejeita se contém espaços, newlines ou caracteres de controle
+  [[ "$token" =~ [[:space:]] ]] && return 1
+  # Aceita JWT (3 segmentos base64url separados por ponto)
+  [[ "$token" =~ ^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$ ]] && return 0
+  # Aceita base64 padrão (formato usado por algumas versões do bw CLI)
+  [[ "$token" =~ ^[A-Za-z0-9+/=_-]+$ ]] && return 0
+  return 1
 }
 
 # ─── Sessão / Login ───────────────────────────────────────────────────────────
@@ -197,7 +219,7 @@ ensure_session() {
   # 1. usa BW_SESSION do ambiente se válido
   if [[ -n "${BW_SESSION:-}" ]]; then
     if _validate_session_token "$BW_SESSION" && \
-       bw status --session "$BW_SESSION" 2>/dev/null \
+       _bw_status --session "$BW_SESSION" \
          | jq -e '.status == "unlocked"' &>/dev/null; then
       return 0
     fi
@@ -218,7 +240,7 @@ ensure_session() {
       if _validate_session_token "$saved_token"; then
         BW_SESSION="$saved_token"
         export BW_SESSION
-        if bw status --session "$BW_SESSION" 2>/dev/null \
+        if _bw_status --session "$BW_SESSION" \
              | jq -e '.status == "unlocked"' &>/dev/null; then
           log_ok "Sessão restaurada"
           return 0
@@ -232,16 +254,16 @@ ensure_session() {
 
   # 3. verifica estado atual do cofre
   local status
-  status=$(bw status 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unauthenticated")
+  status=$(_bw_status | jq -r '.status' 2>/dev/null || echo "unauthenticated")
 
   case "$status" in
     "unauthenticated")
       log_info "Fazendo login no Bitwarden..."
-      BW_SESSION=$(bw login --raw)
+      BW_SESSION=$(_bw_raw login --raw)
       ;;
     "locked")
       log_info "Cofre bloqueado. Digite sua senha mestra:"
-      BW_SESSION=$(bw unlock --raw)
+      BW_SESSION=$(_bw_raw unlock --raw)
       ;;
     "unlocked")
       log_ok "Cofre desbloqueado"
@@ -729,7 +751,10 @@ menu_generate() {
     read -r sep
     sep=${sep:--}
     # [SEC-10] restringe separador a 1 caractere não especial de shell
-    if [[ ${#sep} -ne 1 ]] || [[ "$sep" =~ [\"\'\\;|&\`\$\(\)] ]]; then
+    # regex em variável para evitar interpretação prematura pelo bash
+    local _sep_invalid_pattern
+    _sep_invalid_pattern='["|'"'"'\\;|&`$()]'
+    if [[ ${#sep} -ne 1 ]] || [[ "$sep" =~ $_sep_invalid_pattern ]]; then
       log_warn "Separador inválido. Usando '-'."
       sep="-"
     fi
@@ -796,7 +821,7 @@ menu_sysinfo() {
   separator
 
   local status_json
-  status_json=$(bw status --session "${BW_SESSION:-}" 2>/dev/null || echo '{}')
+  status_json=$(_bw_status --session "${BW_SESSION:-}")
   local vault_status user_email
   vault_status=$(echo "$status_json" | jq -r '.status // "desconhecido"')
   user_email=$(echo "$status_json" | jq -r '.userEmail // "—"')
