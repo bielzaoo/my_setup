@@ -1,0 +1,87 @@
+alias bounty="sudo docker start bugbounty && sudo docker exec -it bugbounty bash"
+alias cd='z'
+alias j='zi'
+alias ls='eza --icons'
+alias ll='eza -lh --icons'
+alias la='eza -lha --icons'
+alias lt='eza -T --icons'
+alias tt="taskwarrior-tui"
+
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/nvim/site/:$PATH"
+export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_CTRL_T_OPTS="
+  --preview '
+    if file --mime {} | grep -q json; then
+      jq . {} 2>/dev/null | head -200
+    else
+      bat --style=numbers --color=always {} 2>/dev/null | head -200
+    fi
+  '
+  --preview-window=right:60%
+"
+source /usr/share/fzf/key-bindings.zsh
+source /usr/share/fzf/completion.zsh
+
+# functions
+f() {
+  local file
+
+  file=$(fzf --preview '
+  clear
+  mime=$(file --mime-type -b {})
+
+  case "$mime" in
+    application/json)
+      jq . {} 2>/dev/null | head -200
+      ;;
+    text/*)
+      bat --style=numbers --color=always {} 2>/dev/null | head -200
+      ;;
+    image/*)
+      kitty +kitten icat {} 2>/dev/null
+      ;;
+    application/pdf)
+      pdftotext {} - | head -200 2>/dev/null
+      ;;
+    *)
+      file {}
+      ;;
+  esac
+  ') || return
+
+  # Detectar tipo do arquivo
+  local mime
+  mime=$(file --mime-type -b "$file")
+
+  case "$mime" in
+    text/*|application/json)
+      ${EDITOR:-nvim} "$file"
+      ;;
+    application/pdf|image/*|video/*)
+      xdg-open "$file" >/dev/null 2>&1 &
+      ;;
+    *)
+      xdg-open "$file" >/dev/null 2>&1 &
+      ;;
+  esac
+}
+
+frg() {
+  rg --line-number --hidden --ignore-case "$1" | fzf \
+    --preview '
+      if file --mime {1} | grep -q json; then
+        jq . {1} 2>/dev/null | head -200
+      else
+        bat --style=numbers --color=always {1} --highlight-line {2}
+      fi
+    ' \
+    --delimiter ':' \
+    --nth 3..
+}
+
+eval "$(zoxide init zsh)"
+eval "$(starship init zsh)"
+
