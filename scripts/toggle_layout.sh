@@ -1,14 +1,13 @@
-#!/bin/bash
+##!/bin/bash
 
-#!/bin/bash
+STATE_FILE="$HOME/.cache/hypr_orientation"
 
-STATE_FILE="/tmp/hypr_orientation"
-
-if [ ! -f "$STATE_FILE" ]; then
-  echo "vertical" >"$STATE_FILE"
-fi
+[ ! -f "$STATE_FILE" ] && echo "vertical" >"$STATE_FILE"
 
 state=$(cat "$STATE_FILE")
+
+# sempre força master
+hyprctl keyword general:layout master
 
 if [ "$state" = "vertical" ]; then
   hyprctl dispatch layoutmsg orientationtop
