@@ -1,9 +1,6 @@
 #!/bin/bash
-
-brightness=$(brightnessctl get)
-max=$(brightnessctl max)
-percent=$((brightness * 100 / max))
-
-notify-send "🔆 Brilho" "$percent%" \
--h int:value:$percent \
--h string:x-canonical-private-synchronous:brightness
+# ~/.local/bin/brightness-notify.sh
+BRI=$(brightnessctl -m | awk -F, '{print substr($4,1,length($4)-1)}')
+notify-send -a "brightness" -h int:value:$BRI -t 2500 \
+  -h string:x-canonical-private-synchronous:brightness \
+  "☀️ Brilho" "$BRI%"

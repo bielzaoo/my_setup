@@ -1,0 +1,26 @@
+##!/bin/bash
+# ~/.local/bin/touchpad-notify.sh
+
+STATE_FILE="/tmp/touchpad_state"
+
+# Lê estado atual (padrão: ativado)
+if [ -f "$STATE_FILE" ]; then
+  CURRENT=$(cat "$STATE_FILE")
+else
+  CURRENT="enabled"
+fi
+
+# Alterna
+if [ "$CURRENT" = "enabled" ]; then
+  hyprctl keyword "device[etps/2-elantech-touchpad]:enabled" false
+  echo "disabled" >"$STATE_FILE"
+  notify-send -a "touchpad" -t 2500 \
+    -h string:x-canonical-private-synchronous:touchpad \
+    "🚫 Touchpad" "Desativado"
+else
+  hyprctl keyword "device[etps/2-elantech-touchpad]:enabled" true
+  echo "enabled" >"$STATE_FILE"
+  notify-send -a "touchpad" -t 2500 \
+    -h string:x-canonical-private-synchronous:touchpad \
+    "✅ Touchpad" "Ativado"
+fi
