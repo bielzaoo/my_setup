@@ -30,15 +30,11 @@
 ├── ratopass/
 │   └── ratopass.sh       ← gerenciador de senhas (Bitwarden CLI)
 ├── scripts/              ← utilitários para waybar e sistema
-│   ├── brightness-down
 │   ├── brightness-notify
-│   ├── brightness-up
+│   ├── touchpad-notify
 │   ├── discord-wayland
 │   ├── toggle_layout.sh
-│   ├── volume-down
-│   ├── volume-mute
-│   ├── volume-notify
-│   └── volume-up
+│   └── volume-notify
 ├── shell_confs.txt        ← aliases, funções e exports para o .zshrc
 └── wallpapers/            ← copiados para ~/Imagens/
     ├── batman.jpg
